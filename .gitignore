@@ -1,0 +1,55 @@
+# =========================
+# Java / Maven
+# =========================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# =========================
+# Node
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# IDE
+# =========================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+.idea/
+*.iml
+
+# =========================
+# Build / Coverage
+# =========================
+dist/
+build/
+coverage/
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Local database / temporary files
+# =========================
+*.local
+*.tmp

@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "vscjava.vscode-java-pack",
+    "vmware.vscode-spring-boot",
+    "vscjava.vscode-spring-initializr",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "angular.ng-template",
+    "ms-azuretools.vscode-docker",
+    "eamodio.gitlens"
+  ]
+}
