@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: cropflow-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: cropflow
+      POSTGRES_USER: cropflow_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - cropflow-postgres-data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U cropflow_app -d cropflow"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  cropflow-postgres-data:

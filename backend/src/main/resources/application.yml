@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: cropflow-api
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
