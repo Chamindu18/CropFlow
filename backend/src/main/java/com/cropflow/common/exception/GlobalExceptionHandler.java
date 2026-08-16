@@ -8,7 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import com.cropflow.auth.service.AuthService.RegistrationConflictException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -82,6 +83,34 @@ public class GlobalExceptionHandler {
                 Map.of()
         );
     }
+
+    @ExceptionHandler(RegistrationConflictException.class)
+        public ResponseEntity<ApiErrorResponse> handleRegistrationConflict(
+                RegistrationConflictException exception,
+                HttpServletRequest request
+        ) {
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                "REGISTRATION_CONFLICT",
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+        }
+
+     @ExceptionHandler(HttpMessageNotReadableException.class)
+        public ResponseEntity<ApiErrorResponse> handleUnreadableMessage(
+                HttpMessageNotReadableException exception,
+                HttpServletRequest request
+        ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "INVALID_REQUEST",
+                "Request contains invalid or malformed data.",
+                request.getRequestURI(),
+                Map.of()
+        );
+        }   
 
     private ResponseEntity<ApiErrorResponse> buildResponse(
             HttpStatus status,
