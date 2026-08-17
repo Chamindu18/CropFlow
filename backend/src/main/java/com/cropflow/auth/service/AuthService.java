@@ -2,6 +2,7 @@ package com.cropflow.auth.service;
 
 import com.cropflow.auth.dto.RegistrationRequest;
 import com.cropflow.auth.dto.RegistrationResponse;
+import com.cropflow.auth.verification.EmailVerificationService;
 import com.cropflow.security.PasswordService;
 import com.cropflow.user.domain.User;
 import com.cropflow.user.domain.UserRole;
@@ -18,13 +19,16 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordService passwordService;
+    private final EmailVerificationService emailVerificationService;
 
     public AuthService(
             UserRepository userRepository,
-            PasswordService passwordService
+            PasswordService passwordService,
+            EmailVerificationService emailVerificationService
     ) {
         this.userRepository = userRepository;
         this.passwordService = passwordService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @Transactional
@@ -48,6 +52,7 @@ public class AuthService {
         );
 
         User savedUser = userRepository.save(user);
+        emailVerificationService.createVerificationToken(savedUser);
 
         return new RegistrationResponse(
                 "Registration successful. Please verify your email.",

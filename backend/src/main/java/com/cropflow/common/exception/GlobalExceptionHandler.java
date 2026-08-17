@@ -9,6 +9,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.cropflow.auth.service.AuthService.RegistrationConflictException;
+import com.cropflow.auth.verification.EmailVerificationService;
+
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -111,6 +113,28 @@ public class GlobalExceptionHandler {
                 Map.of()
         );
         }   
+
+        @ExceptionHandler(EmailVerificationService.EmailVerificationException.class)
+        public ResponseEntity<ApiErrorResponse> handleEmailVerificationException(
+                EmailVerificationService.EmailVerificationException exception,
+                HttpServletRequest request
+        ) {
+        HttpStatus status = switch (exception.getCode()) {
+                case "VERIFICATION_TOKEN_USED",
+                "VERIFICATION_TOKEN_EXPIRED",
+                "INVALID_ACCOUNT_STATE" -> HttpStatus.CONFLICT;
+
+                default -> HttpStatus.BAD_REQUEST;
+        };
+
+        return buildResponse(
+                status,
+                exception.getCode(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+        }
 
     private ResponseEntity<ApiErrorResponse> buildResponse(
             HttpStatus status,
