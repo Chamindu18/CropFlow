@@ -4,6 +4,7 @@ import com.cropflow.auth.dto.LoginRequest;
 import com.cropflow.auth.dto.LoginResponse;
 import com.cropflow.auth.dto.RegistrationRequest;
 import com.cropflow.auth.dto.RegistrationResponse;
+import com.cropflow.auth.refresh.RefreshTokenService;
 import com.cropflow.auth.verification.EmailVerificationService;
 import com.cropflow.security.PasswordService;
 import com.cropflow.security.jwt.JwtProperties;
@@ -31,6 +32,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordService passwordService;
     private final EmailVerificationService emailVerificationService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(
             AuthenticationManager authenticationManager,
@@ -38,7 +40,8 @@ public class AuthService {
             JwtProperties jwtProperties,
             UserRepository userRepository,
             PasswordService passwordService,
-            EmailVerificationService emailVerificationService
+            EmailVerificationService emailVerificationService,
+                RefreshTokenService refreshTokenService
     ) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -46,14 +49,22 @@ public class AuthService {
         this.userRepository = userRepository;
         this.passwordService = passwordService;
         this.emailVerificationService = emailVerificationService;
+        this.refreshTokenService = refreshTokenService;
     }
+
+    public record AuthenticationResult(
+                LoginResponse response,
+                String refreshToken
+        ) {
+        }
 
     /**
      * Authenticates a verified active user and creates a short-lived JWT.
      */
-    @Transactional(readOnly = true)
-    public LoginResponse login(LoginRequest request) {
-        String normalizedEmail = normalizeEmail(request.email());
+    @Transactional
+        public AuthenticationResult login(LoginRequest request) {
+        String normalizedEmail =
+                normalizeEmail(request.email());
 
         Authentication authentication =
                 authenticationManager.authenticate(
@@ -73,12 +84,17 @@ public class AuthService {
                         )
                 );
 
-        Instant expiresAt = Instant.now()
-                .plus(jwtProperties.accessTokenTtl());
+        Instant expiresAt =
+                Instant.now()
+                        .plus(jwtProperties.accessTokenTtl());
 
-        String accessToken = jwtService.generateAccessToken(user);
+        String accessToken =
+                jwtService.generateAccessToken(user);
 
-        return new LoginResponse(
+        RefreshTokenService.IssuedRefreshToken refreshToken =
+                refreshTokenService.create(user);
+
+        LoginResponse loginResponse = new LoginResponse(
                 accessToken,
                 "Bearer",
                 expiresAt,
@@ -86,8 +102,12 @@ public class AuthService {
                 user.getEmail(),
                 user.getRole().name()
         );
-    }
 
+        return new AuthenticationResult(
+                loginResponse,
+                refreshToken.rawToken()
+        );
+        }
     /**
      * Creates a pending user and a one-time email verification token.
      */

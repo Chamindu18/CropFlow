@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import com.cropflow.auth.refresh.RefreshTokenService;
 import com.cropflow.auth.service.AuthService.RegistrationConflictException;
 import com.cropflow.auth.verification.EmailVerificationService;
 import org.springframework.security.core.AuthenticationException;
@@ -140,6 +142,29 @@ public class GlobalExceptionHandler {
                 "INVALID_ACCOUNT_STATE" -> HttpStatus.CONFLICT;
 
                 default -> HttpStatus.BAD_REQUEST;
+        };
+
+        return buildResponse(
+                status,
+                exception.getCode(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+        }
+
+        @ExceptionHandler(
+                RefreshTokenService.RefreshTokenException.class
+        )
+        public ResponseEntity<ApiErrorResponse> handleRefreshTokenException(
+                RefreshTokenService.RefreshTokenException exception,
+                HttpServletRequest request
+        ) {
+        HttpStatus status = switch (exception.getCode()) {
+                case "REFRESH_TOKEN_REVOKED",
+                "REFRESH_TOKEN_EXPIRED" -> HttpStatus.UNAUTHORIZED;
+
+                default -> HttpStatus.UNAUTHORIZED;
         };
 
         return buildResponse(

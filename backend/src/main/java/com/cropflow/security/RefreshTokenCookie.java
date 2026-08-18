@@ -1,9 +1,11 @@
 package com.cropflow.security;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -17,16 +19,21 @@ public final class RefreshTokenCookie {
     public static void add(
             HttpServletResponse response,
             String token,
-            int maxAge
+            Duration maxAge,
+            boolean secure
     ) {
-        Cookie cookie = new Cookie(NAME, token);
+        ResponseCookie cookie = ResponseCookie.from(NAME, token)
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/api/v1/auth")
+                .maxAge(maxAge)
+                .build();
 
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false); // true in production
-        cookie.setPath("/api/v1/auth");
-        cookie.setMaxAge(maxAge);
-
-        response.addCookie(cookie);
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                cookie.toString()
+        );
     }
 
     public static Optional<String> extract(
@@ -38,19 +45,25 @@ public final class RefreshTokenCookie {
 
         return Arrays.stream(request.getCookies())
                 .filter(cookie -> NAME.equals(cookie.getName()))
-                .map(Cookie::getValue)
+                .map(jakarta.servlet.http.Cookie::getValue)
                 .findFirst();
     }
 
     public static void clear(
-            HttpServletResponse response
+            HttpServletResponse response,
+            boolean secure
     ) {
-        Cookie cookie = new Cookie(NAME, "");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setPath("/api/v1/auth");
-        cookie.setMaxAge(0);
+        ResponseCookie cookie = ResponseCookie.from(NAME, "")
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/api/v1/auth")
+                .maxAge(Duration.ZERO)
+                .build();
 
-        response.addCookie(cookie);
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                cookie.toString()
+        );
     }
 }

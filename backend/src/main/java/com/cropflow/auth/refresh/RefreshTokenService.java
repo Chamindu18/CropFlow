@@ -1,5 +1,6 @@
 package com.cropflow.auth.refresh;
 
+import com.cropflow.security.jwt.JwtProperties;
 import com.cropflow.user.domain.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,47 +17,45 @@ public class RefreshTokenService {
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final RefreshTokenRepository repository;
-    private final com.cropflow.security.jwt.JwtProperties jwtProperties;
+    private final JwtProperties jwtProperties;
 
     public RefreshTokenService(
             RefreshTokenRepository repository,
-            com.cropflow.security.jwt.JwtProperties jwtProperties
+            JwtProperties jwtProperties
     ) {
         this.repository = repository;
         this.jwtProperties = jwtProperties;
     }
 
     @Transactional
-    public String create(User user) {
+    public IssuedRefreshToken create(User user) {
         String rawToken = generateToken();
 
         RefreshToken entity = new RefreshToken(
                 user,
                 hash(rawToken),
-                Instant.now().plus(jwtProperties.refreshTokenTtl())
+                Instant.now().plus(
+                        jwtProperties.refreshTokenTtl()
+                )
         );
 
-        repository.save(entity);
+        RefreshToken saved = repository.save(entity);
 
-        return rawToken;
+        return new IssuedRefreshToken(
+                saved,
+                rawToken
+        );
     }
 
     @Transactional
     public RotationResult rotate(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) {
-            throw new RefreshTokenException(
-                    "INVALID_REFRESH_TOKEN",
-                    "Refresh token is invalid."
-            );
+            throw invalidToken();
         }
 
-        RefreshToken current = repository.findByTokenHash(hash(rawToken))
-                .orElseThrow(() ->
-                        new RefreshTokenException(
-                                "INVALID_REFRESH_TOKEN",
-                                "Refresh token is invalid."
-                        )
-                );
+        RefreshToken current = repository
+                .findByTokenHash(hash(rawToken))
+                .orElseThrow(this::invalidToken);
 
         if (current.isRevoked()) {
             throw new RefreshTokenException(
@@ -72,22 +71,18 @@ public class RefreshTokenService {
             );
         }
 
-        RefreshToken replacement = new RefreshToken(
-                current.getUser(),
-                hash(generateToken()),
-                Instant.now().plus(jwtProperties.refreshTokenTtl())
-        );
-
-        // Generate the raw replacement separately so it can be returned.
         String replacementRawToken = generateToken();
 
-        replacement = new RefreshToken(
+        RefreshToken replacement = new RefreshToken(
                 current.getUser(),
                 hash(replacementRawToken),
-                Instant.now().plus(jwtProperties.refreshTokenTtl())
+                Instant.now().plus(
+                        jwtProperties.refreshTokenTtl()
+                )
         );
 
-        RefreshToken savedReplacement = repository.save(replacement);
+        RefreshToken savedReplacement =
+                repository.save(replacement);
 
         current.replaceWith(savedReplacement);
         repository.save(current);
@@ -113,6 +108,13 @@ public class RefreshTokenService {
                 });
     }
 
+    private RefreshTokenException invalidToken() {
+        return new RefreshTokenException(
+                "INVALID_REFRESH_TOKEN",
+                "Refresh token is invalid."
+        );
+    }
+
     private String generateToken() {
         byte[] bytes = new byte[32];
         secureRandom.nextBytes(bytes);
@@ -126,21 +128,32 @@ public class RefreshTokenService {
         try {
             byte[] digest = MessageDigest
                     .getInstance("SHA-256")
-                    .digest(token.getBytes(StandardCharsets.UTF_8));
+                    .digest(
+                            token.getBytes(StandardCharsets.UTF_8)
+                    );
 
             StringBuilder builder = new StringBuilder(64);
 
             for (byte value : digest) {
-                builder.append(String.format("%02x", value));
+                builder.append(
+                        String.format("%02x", value)
+                );
             }
 
             return builder.toString();
+
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException(
                     "SHA-256 algorithm is unavailable.",
                     exception
             );
         }
+    }
+
+    public record IssuedRefreshToken(
+            RefreshToken entity,
+            String rawToken
+    ) {
     }
 
     public record RotationResult(
