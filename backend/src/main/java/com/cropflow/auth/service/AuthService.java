@@ -1,36 +1,96 @@
 package com.cropflow.auth.service;
 
+import com.cropflow.auth.dto.LoginRequest;
+import com.cropflow.auth.dto.LoginResponse;
 import com.cropflow.auth.dto.RegistrationRequest;
 import com.cropflow.auth.dto.RegistrationResponse;
 import com.cropflow.auth.verification.EmailVerificationService;
 import com.cropflow.security.PasswordService;
+import com.cropflow.security.jwt.JwtProperties;
+import com.cropflow.security.jwt.JwtService;
+import com.cropflow.security.principal.CropFlowUserPrincipal;
 import com.cropflow.user.domain.User;
 import com.cropflow.user.domain.UserRole;
 import com.cropflow.user.domain.UserStatus;
 import com.cropflow.user.repository.UserRepository;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Locale;
 
 @Service
 public class AuthService {
 
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final JwtProperties jwtProperties;
     private final UserRepository userRepository;
     private final PasswordService passwordService;
     private final EmailVerificationService emailVerificationService;
 
     public AuthService(
+            AuthenticationManager authenticationManager,
+            JwtService jwtService,
+            JwtProperties jwtProperties,
             UserRepository userRepository,
             PasswordService passwordService,
             EmailVerificationService emailVerificationService
     ) {
+        this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
+        this.jwtProperties = jwtProperties;
         this.userRepository = userRepository;
         this.passwordService = passwordService;
         this.emailVerificationService = emailVerificationService;
     }
 
+    /**
+     * Authenticates a verified active user and creates a short-lived JWT.
+     */
+    @Transactional(readOnly = true)
+    public LoginResponse login(LoginRequest request) {
+        String normalizedEmail = normalizeEmail(request.email());
+
+        Authentication authentication =
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                normalizedEmail,
+                                request.password()
+                        )
+                );
+
+        CropFlowUserPrincipal principal =
+                (CropFlowUserPrincipal) authentication.getPrincipal();
+
+        User user = userRepository.findById(principal.getUserId())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Authenticated user could not be loaded."
+                        )
+                );
+
+        Instant expiresAt = Instant.now()
+                .plus(jwtProperties.accessTokenTtl());
+
+        String accessToken = jwtService.generateAccessToken(user);
+
+        return new LoginResponse(
+                accessToken,
+                "Bearer",
+                expiresAt,
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+    }
+
+    /**
+     * Creates a pending user and a one-time email verification token.
+     */
     @Transactional
     public RegistrationResponse register(RegistrationRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
@@ -52,6 +112,7 @@ public class AuthService {
         );
 
         User savedUser = userRepository.save(user);
+
         emailVerificationService.createVerificationToken(savedUser);
 
         return new RegistrationResponse(
@@ -62,7 +123,9 @@ public class AuthService {
         );
     }
 
-    private UserRole mapRole(com.cropflow.auth.dto.RegistrationRole role) {
+    private UserRole mapRole(
+            com.cropflow.auth.dto.RegistrationRole role
+    ) {
         return switch (role) {
             case FARMER -> UserRole.FARMER;
             case BUYER -> UserRole.BUYER;
@@ -82,7 +145,8 @@ public class AuthService {
         return phone.trim();
     }
 
-    public static class RegistrationConflictException extends RuntimeException {
+    public static class RegistrationConflictException
+            extends RuntimeException {
 
         public RegistrationConflictException(String message) {
             super(message);

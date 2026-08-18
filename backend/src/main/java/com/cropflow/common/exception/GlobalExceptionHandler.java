@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.cropflow.auth.service.AuthService.RegistrationConflictException;
 import com.cropflow.auth.verification.EmailVerificationService;
+import org.springframework.security.core.AuthenticationException;
 
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import java.time.Instant;
@@ -32,6 +33,20 @@ public class GlobalExceptionHandler {
                 Map.of()
         );
     }
+
+    @ExceptionHandler(AuthenticationException.class)
+        public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+                AuthenticationException exception,
+                HttpServletRequest request
+        ) {
+        return buildResponse(
+                HttpStatus.UNAUTHORIZED,
+                "INVALID_CREDENTIALS",
+                "Invalid email or password.",
+                request.getRequestURI(),
+                Map.of()
+        );
+        }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationException(

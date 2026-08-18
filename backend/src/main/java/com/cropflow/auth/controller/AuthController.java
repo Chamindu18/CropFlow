@@ -1,15 +1,20 @@
 package com.cropflow.auth.controller;
 
 import com.cropflow.auth.dto.EmailVerificationResponse;
+import com.cropflow.auth.dto.LoginRequest;
+import com.cropflow.auth.dto.LoginResponse;
 import com.cropflow.auth.dto.RegistrationRequest;
 import com.cropflow.auth.dto.RegistrationResponse;
 import com.cropflow.auth.service.AuthService;
 import com.cropflow.auth.verification.EmailVerificationService;
-
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -18,16 +23,29 @@ public class AuthController {
     private final AuthService authService;
     private final EmailVerificationService emailVerificationService;
 
-    public AuthController(AuthService authService, EmailVerificationService emailVerificationService) {
+    public AuthController(
+            AuthService authService,
+            EmailVerificationService emailVerificationService
+    ) {
         this.authService = authService;
         this.emailVerificationService = emailVerificationService;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        return ResponseEntity.ok(
+                authService.login(request)
+        );
     }
 
     @PostMapping("/register")
     public ResponseEntity<RegistrationResponse> register(
             @Valid @RequestBody RegistrationRequest request
     ) {
-        RegistrationResponse response = authService.register(request);
+        RegistrationResponse response =
+                authService.register(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
