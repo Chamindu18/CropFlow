@@ -15,6 +15,8 @@ import java.util.Base64;
 @Service
 public class RefreshTokenService {
 
+    private static final int TOKEN_BYTES = 32;
+
     private final SecureRandom secureRandom = new SecureRandom();
     private final RefreshTokenRepository repository;
     private final JwtProperties jwtProperties;
@@ -27,6 +29,13 @@ public class RefreshTokenService {
         this.jwtProperties = jwtProperties;
     }
 
+    /**
+     * Creates and persists a new refresh token.
+     *
+     * The raw token is returned only to the application layer so it can
+     * be delivered to the browser as an HttpOnly cookie. Only its SHA-256
+     * hash is persisted in PostgreSQL.
+     */
     @Transactional
     public IssuedRefreshToken create(User user) {
         String rawToken = generateToken();
@@ -39,32 +48,38 @@ public class RefreshTokenService {
                 )
         );
 
-        RefreshToken saved = repository.save(entity);
+        RefreshToken savedToken = repository.save(entity);
 
         return new IssuedRefreshToken(
-                saved,
+                savedToken,
                 rawToken
         );
     }
 
+    /**
+     * Atomically validates and rotates a refresh token.
+     *
+     * The repository lookup uses PESSIMISTIC_WRITE, preventing two
+     * concurrent requests from successfully rotating the same token.
+     */
     @Transactional
     public RotationResult rotate(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) {
             throw invalidToken();
         }
 
-        RefreshToken current = repository
+        RefreshToken currentToken = repository
                 .findByTokenHash(hash(rawToken))
                 .orElseThrow(this::invalidToken);
 
-        if (current.isRevoked()) {
+        if (currentToken.isRevoked()) {
             throw new RefreshTokenException(
                     "REFRESH_TOKEN_REVOKED",
                     "Refresh token is no longer valid."
             );
         }
 
-        if (current.isExpired()) {
+        if (currentToken.isExpired()) {
             throw new RefreshTokenException(
                     "REFRESH_TOKEN_EXPIRED",
                     "Refresh token has expired."
@@ -73,8 +88,8 @@ public class RefreshTokenService {
 
         String replacementRawToken = generateToken();
 
-        RefreshToken replacement = new RefreshToken(
-                current.getUser(),
+        RefreshToken replacementToken = new RefreshToken(
+                currentToken.getUser(),
                 hash(replacementRawToken),
                 Instant.now().plus(
                         jwtProperties.refreshTokenTtl()
@@ -82,17 +97,28 @@ public class RefreshTokenService {
         );
 
         RefreshToken savedReplacement =
-                repository.save(replacement);
+                repository.save(replacementToken);
 
-        current.replaceWith(savedReplacement);
-        repository.save(current);
+        currentToken.replaceWith(savedReplacement);
+
+        /*
+         * Because the current token row is locked by the repository
+         * query, another concurrent rotation cannot pass the revoked
+         * check before this transaction commits.
+         */
+        repository.save(currentToken);
 
         return new RotationResult(
-                current.getUser(),
+                currentToken.getUser(),
                 replacementRawToken
         );
     }
 
+    /**
+     * Revokes a refresh token if it exists.
+     *
+     * This operation is intentionally idempotent.
+     */
     @Transactional
     public void revoke(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) {
@@ -116,7 +142,8 @@ public class RefreshTokenService {
     }
 
     private String generateToken() {
-        byte[] bytes = new byte[32];
+        byte[] bytes = new byte[TOKEN_BYTES];
+
         secureRandom.nextBytes(bytes);
 
         return Base64.getUrlEncoder()
@@ -124,6 +151,9 @@ public class RefreshTokenService {
                 .encodeToString(bytes);
     }
 
+    /**
+     * Hashes the opaque refresh token before persistence/lookup.
+     */
     private String hash(String token) {
         try {
             byte[] digest = MessageDigest
