@@ -158,4 +158,8 @@ public class User {
         this.lastName = lastName;
         this.phone = phone;
     }
+
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }

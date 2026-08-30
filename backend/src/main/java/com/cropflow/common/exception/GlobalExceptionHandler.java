@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.cropflow.auth.passwordreset.PasswordResetService;
 import com.cropflow.auth.refresh.RefreshTokenService;
 import com.cropflow.auth.service.AuthService.RegistrationConflictException;
 import com.cropflow.auth.verification.EmailVerificationService;
@@ -165,6 +166,30 @@ public class GlobalExceptionHandler {
                 "REFRESH_TOKEN_EXPIRED" -> HttpStatus.UNAUTHORIZED;
 
                 default -> HttpStatus.UNAUTHORIZED;
+        };
+
+        return buildResponse(
+                status,
+                exception.getCode(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+        }
+
+        @ExceptionHandler(
+                PasswordResetService.PasswordResetException.class
+        )
+        public ResponseEntity<ApiErrorResponse> handlePasswordResetException(
+                PasswordResetService.PasswordResetException exception,
+                HttpServletRequest request
+        ) {
+        HttpStatus status = switch (exception.getCode()) {
+                case "PASSWORD_RESET_TOKEN_EXPIRED",
+                "PASSWORD_RESET_TOKEN_USED",
+                "INVALID_ACCOUNT_STATE" -> HttpStatus.CONFLICT;
+
+                default -> HttpStatus.BAD_REQUEST;
         };
 
         return buildResponse(

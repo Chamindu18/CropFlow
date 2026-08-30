@@ -1,10 +1,14 @@
 package com.cropflow.auth.controller;
 
 import com.cropflow.auth.dto.EmailVerificationResponse;
+import com.cropflow.auth.dto.ForgotPasswordRequest;
+import com.cropflow.auth.dto.ForgotPasswordResponse;
 import com.cropflow.auth.dto.LoginRequest;
 import com.cropflow.auth.dto.LoginResponse;
 import com.cropflow.auth.dto.RegistrationRequest;
 import com.cropflow.auth.dto.RegistrationResponse;
+import com.cropflow.auth.dto.ResetPasswordRequest;
+import com.cropflow.auth.passwordreset.PasswordResetService;
 import com.cropflow.auth.refresh.RefreshTokenService;
 import com.cropflow.auth.service.AuthService;
 import com.cropflow.auth.verification.EmailVerificationService;
@@ -37,6 +41,7 @@ public class AuthController {
     private final RefreshCookieProperties refreshCookieProperties;
     private final JwtProperties jwtProperties;
     private final JwtService jwtService;
+    private final PasswordResetService passwordResetService;
 
     public AuthController(
             AuthService authService,
@@ -44,7 +49,8 @@ public class AuthController {
             RefreshTokenService refreshTokenService,
             RefreshCookieProperties refreshCookieProperties,
             JwtProperties jwtProperties,
-            JwtService jwtService
+            JwtService jwtService,
+            PasswordResetService passwordResetService
     ) {
         this.authService = authService;
         this.emailVerificationService = emailVerificationService;
@@ -52,6 +58,7 @@ public class AuthController {
         this.refreshCookieProperties = refreshCookieProperties;
         this.jwtProperties = jwtProperties;
         this.jwtService = jwtService;
+        this.passwordResetService = passwordResetService;
     }
 
     /**
@@ -176,4 +183,34 @@ public class AuthController {
                 )
         );
     }
+
+    @PostMapping("/forgot-password")
+        public ResponseEntity<ForgotPasswordResponse> forgotPassword(
+                @Valid @RequestBody ForgotPasswordRequest request
+        ) {
+        String rawToken =
+                passwordResetService.requestReset(request.email());
+
+        /*
+        * The raw token must NEVER be returned to the browser.
+        * The email-delivery layer will consume it later.
+        */
+        return ResponseEntity.accepted()
+                .body(
+                        new ForgotPasswordResponse(
+                                "If the account exists, a password reset email has been sent."
+                        )
+                );
+        }
+
+        @PostMapping("/reset-password")
+        @ResponseStatus(HttpStatus.NO_CONTENT)
+        public void resetPassword(
+                @Valid @RequestBody ResetPasswordRequest request
+        ) {
+        passwordResetService.resetPassword(
+                request.token(),
+                request.newPassword()
+        );
+        }
 }
