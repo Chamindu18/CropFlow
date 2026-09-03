@@ -25,16 +25,21 @@ public class ListingService {
             UUID listingId,
             UUID authenticatedUserId
     ) {
-        return listingRepository
-                .findByIdAndSellerId(
-                        listingId,
-                        authenticatedUserId
-                )
+        Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
                                 "Listing not found."
                         )
                 );
+
+        if (!listing.isOwnedBy(authenticatedUserId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Listing not found."
+            );
+        }
+
+        return listing;
     }
 }

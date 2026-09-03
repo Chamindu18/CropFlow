@@ -10,6 +10,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import com.cropflow.marketplace.repository.ListingRepository;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -30,10 +31,14 @@ class AuthControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private ListingRepository listingRepository;
+
     @BeforeEach
     void cleanDatabase() {
+        listingRepository.deleteAll();
         userRepository.deleteAll();
-    }
+        }
 
     @Test
     void registerShouldCreatePendingUserAndHashPassword() throws Exception {

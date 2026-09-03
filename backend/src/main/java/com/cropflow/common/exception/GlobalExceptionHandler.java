@@ -8,12 +8,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.cropflow.auth.passwordreset.PasswordResetService;
 import com.cropflow.auth.refresh.RefreshTokenService;
 import com.cropflow.auth.service.AuthService.RegistrationConflictException;
 import com.cropflow.auth.verification.EmailVerificationService;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import java.time.Instant;
@@ -196,6 +198,44 @@ public class GlobalExceptionHandler {
                 status,
                 exception.getCode(),
                 exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+        }
+
+        @ExceptionHandler(ResponseStatusException.class)
+        public ResponseEntity<ApiErrorResponse> handleResponseStatusException(
+                ResponseStatusException exception,
+                HttpServletRequest request
+        ) {
+        HttpStatus status =
+                HttpStatus.valueOf(exception.getStatusCode().value());
+
+        String message =
+                exception.getReason() != null
+                        ? exception.getReason()
+                        : status.getReasonPhrase();
+
+        return buildResponse(
+                status,
+                status == HttpStatus.NOT_FOUND
+                        ? "RESOURCE_NOT_FOUND"
+                        : "REQUEST_ERROR",
+                message,
+                request.getRequestURI(),
+                Map.of()
+        );
+        }
+
+        @ExceptionHandler(AuthorizationDeniedException.class)
+        public ResponseEntity<ApiErrorResponse> handleAuthorizationDeniedException(
+                AuthorizationDeniedException exception,
+                HttpServletRequest request
+        ) {
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                "FORBIDDEN",
+                "You do not have permission to access this resource.",
                 request.getRequestURI(),
                 Map.of()
         );

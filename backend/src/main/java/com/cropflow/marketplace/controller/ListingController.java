@@ -4,8 +4,12 @@ import com.cropflow.marketplace.domain.Listing;
 import com.cropflow.marketplace.dto.ListingResponse;
 import com.cropflow.marketplace.service.ListingService;
 import com.cropflow.security.principal.CropFlowUserPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
@@ -21,6 +25,7 @@ public class ListingController {
         this.listingService = listingService;
     }
 
+    @PreAuthorize("hasRole('FARMER')")
     @GetMapping("/{listingId}")
     public ListingResponse getListing(
             @PathVariable UUID listingId,
@@ -29,11 +34,10 @@ public class ListingController {
         CropFlowUserPrincipal principal =
                 (CropFlowUserPrincipal) authentication.getPrincipal();
 
-        Listing listing =
-                listingService.getOwnedListing(
-                        listingId,
-                        principal.getUserId()
-                );
+        Listing listing = listingService.getOwnedListing(
+                listingId,
+                principal.getUserId()
+        );
 
         return new ListingResponse(
                 listing.getId(),

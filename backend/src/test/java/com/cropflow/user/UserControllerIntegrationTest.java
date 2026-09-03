@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import com.cropflow.marketplace.repository.ListingRepository;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,10 +37,14 @@ class UserControllerIntegrationTest {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private ListingRepository listingRepository;
+
     private User activeUser;
 
     @BeforeEach
     void setUp() {
+        listingRepository.deleteAll();
         userRepository.deleteAll();
 
         activeUser = new User(
