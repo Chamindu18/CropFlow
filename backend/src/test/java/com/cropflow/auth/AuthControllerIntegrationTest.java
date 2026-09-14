@@ -15,11 +15,12 @@ import com.cropflow.marketplace.repository.ListingRepository;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 class AuthControllerIntegrationTest {
 
     @Autowired
@@ -55,6 +56,7 @@ class AuthControllerIntegrationTest {
 
         String response = mockMvc.perform(
                         post("/api/v1/auth/register")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(request)
                 )
@@ -106,6 +108,7 @@ class AuthControllerIntegrationTest {
 
         mockMvc.perform(
                         post("/api/v1/auth/register")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(firstRequest)
                 )
@@ -113,6 +116,7 @@ class AuthControllerIntegrationTest {
 
         mockMvc.perform(
                         post("/api/v1/auth/register")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(duplicateRequest)
                 )
@@ -135,6 +139,7 @@ class AuthControllerIntegrationTest {
 
         mockMvc.perform(
                         post("/api/v1/auth/register")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(request)
                 )
