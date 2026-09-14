@@ -82,7 +82,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout",
                                 "/api/v1/security/csrf",
-                                "/actuator/health"
+                                "/actuator/health",
+                                "/api/v1/marketplace/listings"
                         ).permitAll()
                         .requestMatchers("/api/v1/admin/**")
                         .hasRole("ADMIN")

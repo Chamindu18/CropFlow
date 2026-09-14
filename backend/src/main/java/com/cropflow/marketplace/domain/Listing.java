@@ -103,4 +103,37 @@ public class Listing {
     public boolean isOwnedBy(UUID userId) {
         return seller.getId().equals(userId);
     }
+
+    public void activate() {
+        if (status != ListingStatus.DRAFT) {
+            throw new InvalidListingStateTransitionException(status, ListingStatus.ACTIVE);
+        }
+        this.status = ListingStatus.ACTIVE;
+    }
+
+    public void cancel() {
+        if (status != ListingStatus.DRAFT && status != ListingStatus.ACTIVE) {
+            throw new InvalidListingStateTransitionException(status, ListingStatus.CANCELLED);
+        }
+        this.status = ListingStatus.CANCELLED;
+    }
+
+    public void markSold() {
+        if (status != ListingStatus.ACTIVE) {
+            throw new InvalidListingStateTransitionException(status, ListingStatus.SOLD);
+        }
+        this.status = ListingStatus.SOLD;
+    }
+
+    public void updateDetails(String title, String description) {
+        if (status != ListingStatus.DRAFT) {
+            throw new InvalidListingStateTransitionException(status, ListingStatus.DRAFT);
+        }
+        if (title != null) {
+            this.title = title;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+    }
 }
