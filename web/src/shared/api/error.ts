@@ -50,10 +50,28 @@ function toStringRecord(value: Record<string, unknown>): Record<string, string> 
   return result;
 }
 
+interface AxiosErrorLike {
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+  config?: {
+    url?: string;
+  };
+  code?: string;
+  message?: string;
+}
+
+function isAxiosErrorLike(error: unknown): error is AxiosErrorLike {
+  return typeof error === 'object' && error !== null && ('response' in error || 'config' in error || 'code' in error);
+}
+
 export function normalizeError(error: unknown): ApiError {
-  if (error instanceof AxiosError) {
-    if (error.response?.data) {
-      const parsed = ApiErrorResponseSchema.safeParse(error.response.data);
+  if (error instanceof AxiosError || isAxiosErrorLike(error)) {
+    const axiosError = error as AxiosErrorLike;
+
+    if (axiosError.response?.data) {
+      const parsed = ApiErrorResponseSchema.safeParse(axiosError.response.data);
       if (parsed.success) {
         const data = parsed.data;
         return createApiError(
@@ -64,21 +82,21 @@ export function normalizeError(error: unknown): ApiError {
           (data.details ?? {}) as Record<string, string>
         );
       }
-      if (typeof error.response.data === 'object' && error.response.data !== null) {
+      if (typeof axiosError.response.data === 'object' && axiosError.response.data !== null) {
         return createApiError(
-          error.response.status,
+          axiosError.response.status ?? 500,
           'UNKNOWN',
           'An unexpected error occurred.',
-          error.config?.url ?? '',
-          toStringRecord(error.response.data as Record<string, unknown>)
+          axiosError.config?.url ?? '',
+          toStringRecord(axiosError.response.data as Record<string, unknown>)
         );
       }
     }
 
-    if (error.response?.status) {
-      const status = error.response.status;
+    if (axiosError.response?.status) {
+      const status = axiosError.response.status;
       let code = 'REQUEST_ERROR';
-      let message = error.message;
+      let message = axiosError.message ?? 'Request failed';
 
       switch (status) {
         case 401:
@@ -105,14 +123,14 @@ export function normalizeError(error: unknown): ApiError {
           break;
       }
 
-      return createApiError(status, code, message, error.config?.url ?? '', {});
+      return createApiError(status, code, message, axiosError.config?.url ?? '', {});
     }
 
-    if (error.code === 'ECONNABORTED') {
+    if (axiosError.code === 'ECONNABORTED') {
       return createApiError(408, 'TIMEOUT', 'Request timed out.', '', {});
     }
 
-    if (error.code === 'ERR_NETWORK') {
+    if (axiosError.code === 'ERR_NETWORK') {
       return createApiError(0, 'NETWORK_ERROR', 'Network error. Check your connection.', '', {});
     }
   }
