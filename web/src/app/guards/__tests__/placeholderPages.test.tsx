@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppProviders } from '../../providers';
-import RegisterPage from '../../../routes/public/RegisterPage';
 import MarketplaceBrowsePage from '../../../routes/authenticated/MarketplaceBrowsePage';
 import ProfilePage from '../../../routes/authenticated/ProfilePage';
 import MyListingsPage from '../../../routes/farmer/MyListingsPage';
@@ -24,10 +23,6 @@ const renderWithProviders = (component: React.ReactNode) => {
 };
 
 describe('Placeholder Pages', () => {
-  it('renders RegisterPage', () => {
-    render(<RegisterPage />);
-    expect(screen.getByText('Register')).toBeInTheDocument();
-  });
 
   it('renders MarketplaceBrowsePage', () => {
     vi.mocked(useAuth).mockReturnValue({
