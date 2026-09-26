@@ -123,4 +123,9 @@ public class ListingService {
         }
         return listingRepository.searchByStatusAndSearchTerm(ListingStatus.ACTIVE, normalizedSearch, pageable);
     }
+
+    @Transactional(readOnly = true)
+    public Page<Listing> browseMyListings(UUID farmerId, Pageable pageable) {
+        return listingRepository.findBySellerIdOrderByCreatedAtDesc(farmerId, pageable);
+    }
 }

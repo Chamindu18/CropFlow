@@ -23,4 +23,6 @@ public interface ListingRepository
             @Param("status") ListingStatus status,
             @Param("search") String search,
             Pageable pageable);
+
+    Page<Listing> findBySellerIdOrderByCreatedAtDesc(UUID sellerId, Pageable pageable);
 }

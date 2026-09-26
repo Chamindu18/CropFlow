@@ -261,4 +261,52 @@ public class ListingController {
 
         return ResponseEntity.ok(responsePage);
     }
+
+    @PreAuthorize("hasRole('FARMER')")
+    @GetMapping("/mine")
+    public ResponseEntity<Page<ListingResponse>> getMyListings(
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size,
+            @RequestParam(required = false) String sort,
+            Authentication authentication
+    ) {
+        int maxSize = 50;
+
+        if (page < 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (size <= 0 || size > maxSize) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Sort sortObj = Sort.by(Sort.Direction.DESC, "createdAt");
+        if (sort != null && !sort.trim().isBlank()) {
+            try {
+                sortObj = Sort.by(Sort.Direction.DESC, sort);
+            } catch (Exception ignored) {
+            }
+        }
+
+        Pageable pageable = PageRequest.of(page, Math.min(size, maxSize), sortObj);
+
+        CropFlowUserPrincipal principal =
+                (CropFlowUserPrincipal) authentication.getPrincipal();
+
+        Page<Listing> listingPage =
+                listingService.browseMyListings(principal.getUserId(), pageable);
+
+        Page<ListingResponse> responsePage = listingPage.map(listing ->
+                new ListingResponse(
+                        listing.getId(),
+                        listing.getSeller().getId(),
+                        listing.getTitle(),
+                        listing.getDescription(),
+                        listing.getStatus(),
+                        listing.getCreatedAt(),
+                        listing.getUpdatedAt()
+                )
+        );
+
+        return ResponseEntity.ok(responsePage);
+    }
 }
