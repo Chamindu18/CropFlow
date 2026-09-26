@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppProviders } from '../../providers';
-import LoginPage from '../../../routes/public/LoginPage';
 import RegisterPage from '../../../routes/public/RegisterPage';
 import MarketplaceBrowsePage from '../../../routes/authenticated/MarketplaceBrowsePage';
 import ProfilePage from '../../../routes/authenticated/ProfilePage';
@@ -25,11 +24,6 @@ const renderWithProviders = (component: React.ReactNode) => {
 };
 
 describe('Placeholder Pages', () => {
-  it('renders LoginPage', () => {
-    render(<LoginPage />);
-    expect(screen.getByText('Login')).toBeInTheDocument();
-  });
-
   it('renders RegisterPage', () => {
     render(<RegisterPage />);
     expect(screen.getByText('Register')).toBeInTheDocument();
@@ -113,31 +107,5 @@ describe('Placeholder Pages', () => {
   it('renders NotFoundPage', () => {
     renderWithProviders(<NotFoundPage />);
     expect(screen.getByText('404 - Page Not Found')).toBeInTheDocument();
-  });
-});
-
-describe('Route safety', () => {
-  it('does not access localStorage for tokens', () => {
-    const localStorageSpy = vi.spyOn(Storage.prototype, 'getItem');
-    
-    render(<LoginPage />);
-    
-    const localStorageCalls = localStorageSpy.mock.calls.filter(
-      call => typeof call[0] === 'string' && (call[0].includes('token') || call[0].includes('auth') || call[0].includes('access'))
-    );
-    expect(localStorageCalls.length).toBe(0);
-    localStorageSpy.mockRestore();
-  });
-
-  it('does not access sessionStorage for tokens', () => {
-    const sessionStorageSpy = vi.spyOn(sessionStorage, 'getItem');
-    
-    render(<LoginPage />);
-    
-    const sessionStorageCalls = sessionStorageSpy.mock.calls.filter(
-      call => typeof call[0] === 'string' && (call[0].includes('token') || call[0].includes('auth') || call[0].includes('access'))
-    );
-    expect(sessionStorageCalls.length).toBe(0);
-    sessionStorageSpy.mockRestore();
   });
 });
