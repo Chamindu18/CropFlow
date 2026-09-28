@@ -59,7 +59,109 @@ const mockPage = {
   empty: false,
 };
 
+type ListingItem = {
+  id: string;
+  sellerId: string;
+  title: string;
+  description: string;
+  status: 'ACTIVE' | 'DRAFT' | 'SOLD' | 'CANCELLED';
+  createdAt: string;
+  updatedAt: string;
+};
+type MockListings = ListingItem[];
+
+export const authHandlers = [
+  http.post(`${API_BASE}/auth/login`, async ({ request }) => {
+    const body = await request.json() as { email: string; password: string };
+    if (body.email === 'test@example.com' && body.password === 'validpassword123') {
+      return HttpResponse.json(mockLoginResponse, { status: 200 });
+    }
+    return HttpResponse.json(
+      {
+        timestamp: new Date().toISOString(),
+        status: 401,
+        code: 'INVALID_CREDENTIALS',
+        message: 'Invalid email or password.',
+        path: '/api/v1/auth/login',
+        details: {},
+      },
+      { status: 401 }
+    );
+  }),
+
+  http.post(`${API_BASE}/auth/register`, async ({ request }) => {
+    const body = await request.json() as { email: string };
+    if (body.email === 'existing@example.com') {
+      return HttpResponse.json(
+        {
+          timestamp: new Date().toISOString(),
+          status: 409,
+          code: 'REGISTRATION_CONFLICT',
+          message: 'Email already registered.',
+          path: '/api/v1/auth/register',
+          details: {},
+        },
+        { status: 409 }
+      );
+    }
+    return HttpResponse.json(mockRegistrationResponse, { status: 201 });
+  }),
+
+  http.post(`${API_BASE}/auth/refresh`, () => {
+    return HttpResponse.json(mockLoginResponse, { status: 200 });
+  }),
+
+  http.post(`${API_BASE}/auth/logout`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${API_BASE}/users/me`, ({ request }) => {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return HttpResponse.json(
+        {
+          timestamp: new Date().toISOString(),
+          status: 401,
+          code: 'UNAUTHORIZED',
+          message: 'Authentication is required.',
+          path: '/api/v1/users/me',
+          details: {},
+        },
+        { status: 401 }
+      );
+    }
+    return HttpResponse.json(mockUser, { status: 200 });
+  }),
+
+  http.post(`${API_BASE}/auth/verify-email`, () => {
+    return HttpResponse.json({ message: 'Email verification successful.' }, { status: 200 });
+  }),
+
+  http.post(`${API_BASE}/auth/forgot-password`, () => {
+    return HttpResponse.json(
+      { message: 'If the account exists, a password reset email has been sent.' },
+      { status: 202 }
+    );
+  }),
+
+  http.post(`${API_BASE}/auth/reset-password`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${API_BASE}/security/csrf`, () => {
+    return HttpResponse.json(
+      {
+        parameterName: '_csrf',
+        headerName: 'X-XSRF-TOKEN',
+        token: 'mock-csrf-token',
+      },
+      { status: 200 }
+    );
+  }),
+];
+
 export const handlers = [
+  ...authHandlers,
   http.post(`${API_BASE}/auth/login`, async ({ request }) => {
     const body = await request.json() as { email: string; password: string };
     if (body.email === 'test@example.com' && body.password === 'validpassword123') {
@@ -375,3 +477,198 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 ];
+
+// Helper functions for MyListingsPage tests - each returns a complete handler set including auth
+export function createMyListingsSuccessHandlers(listings: MockListings) {
+  const page = {
+    content: listings,
+    pageable: {
+      sort: { empty: false, sorted: true, unsorted: false },
+      offset: 0,
+      pageNumber: 0,
+      pageSize: 20,
+      paged: true,
+      unpaged: false,
+    },
+    totalElements: listings.length,
+    totalPages: 1,
+    size: 20,
+    number: 0,
+    first: true,
+    last: true,
+    numberOfElements: listings.length,
+    empty: listings.length === 0,
+  };
+
+  return [
+    ...authHandlers,
+    http.get(`${API_BASE}/marketplace/listings/mine`, () => {
+      return HttpResponse.json(page, { status: 200 });
+    }),
+  ];
+}
+
+export function createMyListingsEmptyHandlers() {
+  const emptyPage = {
+    content: [],
+    pageable: {
+      sort: { empty: false, sorted: true, unsorted: false },
+      offset: 0,
+      pageNumber: 0,
+      pageSize: 20,
+      paged: true,
+      unpaged: false,
+    },
+    totalElements: 0,
+    totalPages: 1,
+    size: 20,
+    number: 0,
+    first: true,
+    last: true,
+    numberOfElements: 0,
+    empty: true,
+  };
+
+  return [
+    ...authHandlers,
+    http.get(`${API_BASE}/marketplace/listings/mine`, () => {
+      return HttpResponse.json(emptyPage, { status: 200 });
+    }),
+  ];
+}
+
+export function createMyListingsPaginationHandlers(listings: MockListings) {
+  const page1Response = {
+    content: listings.slice(0, 2),
+    pageable: {
+      sort: { empty: false, sorted: true, unsorted: false },
+      offset: 0,
+      pageNumber: 0,
+      pageSize: 2,
+      paged: true,
+      unpaged: false,
+    },
+    totalElements: listings.length,
+    totalPages: Math.ceil(listings.length / 2),
+    size: 2,
+    number: 0,
+    first: true,
+    last: false,
+    numberOfElements: 2,
+    empty: false,
+  };
+
+  const page2Response = {
+    content: listings.slice(2, 4),
+    pageable: {
+      sort: { empty: false, sorted: true, unsorted: false },
+      offset: 2,
+      pageNumber: 1,
+      pageSize: 2,
+      paged: true,
+      unpaged: false,
+    },
+    totalElements: listings.length,
+    totalPages: Math.ceil(listings.length / 2),
+    size: 2,
+    number: 1,
+    first: false,
+    last: listings.length <= 4,
+    numberOfElements: Math.min(2, listings.length - 2),
+    empty: false,
+  };
+
+  const page3Response = {
+    content: listings.slice(4, 5),
+    pageable: {
+      sort: { empty: false, sorted: true, unsorted: false },
+      offset: 4,
+      pageNumber: 2,
+      pageSize: 2,
+      paged: true,
+      unpaged: false,
+    },
+    totalElements: listings.length,
+    totalPages: Math.ceil(listings.length / 2),
+    size: 2,
+    number: 2,
+    first: false,
+    last: true,
+    numberOfElements: Math.max(0, listings.length - 4),
+    empty: listings.length <= 4,
+  };
+
+  return [
+    ...authHandlers,
+    http.get(`${API_BASE}/marketplace/listings/mine`, ({ request }) => {
+      const url = new URL(request.url);
+      const page = Number(url.searchParams.get('page') ?? '0');
+      if (page === 0) return HttpResponse.json(page1Response, { status: 200 });
+      if (page === 1) return HttpResponse.json(page2Response, { status: 200 });
+      if (page === 2) return HttpResponse.json(page3Response, { status: 200 });
+      return HttpResponse.json(page1Response, { status: 200 });
+    }),
+  ];
+}
+
+export function createMyListingsErrorHandlers(errorCode: string, status: number, message: string) {
+  return [
+    ...authHandlers,
+    http.get(`${API_BASE}/marketplace/listings/mine`, () => {
+      return HttpResponse.json(
+        {
+          timestamp: new Date().toISOString(),
+          status,
+          code: errorCode,
+          message,
+          path: '/api/v1/marketplace/listings/mine',
+          details: {},
+        },
+        { status }
+      );
+    }),
+  ];
+}
+
+export function createMyListingsNetworkErrorHandlers() {
+  return [
+    ...authHandlers,
+    http.get(`${API_BASE}/marketplace/listings/mine`, () => {
+      return HttpResponse.error();
+    }),
+  ];
+}
+
+export function createMyListingsRetryHandlers(listings: MockListings) {
+  let requestCount = 0;
+  const page = {
+    content: listings,
+    pageable: {
+      sort: { empty: false, sorted: true, unsorted: false },
+      offset: 0,
+      pageNumber: 0,
+      pageSize: 20,
+      paged: true,
+      unpaged: false,
+    },
+    totalElements: listings.length,
+    totalPages: 1,
+    size: 20,
+    number: 0,
+    first: true,
+    last: true,
+    numberOfElements: listings.length,
+    empty: listings.length === 0,
+  };
+
+  return [
+    ...authHandlers,
+    http.get(`${API_BASE}/marketplace/listings/mine`, () => {
+      requestCount++;
+      if (requestCount === 1) {
+        return HttpResponse.error();
+      }
+      return HttpResponse.json(page, { status: 200 });
+    }),
+  ];
+}
