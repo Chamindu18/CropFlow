@@ -7,6 +7,7 @@ import { PublicRoute } from './guards/PublicRoute';
 import { FarmerRoute } from './guards/FarmerRoute';
 import NotFoundPage from '../routes/NotFoundPage';
 import {
+  LandingPage,
   LoginPage,
   RegisterPage,
   VerifyEmailPage,
@@ -26,11 +27,9 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: (
-          <PublicRoute>
-            <SuspenseWrapper>
-              <LoginPage />
-            </SuspenseWrapper>
-          </PublicRoute>
+          <SuspenseWrapper>
+            <LandingPage />
+          </SuspenseWrapper>
         ),
       },
       {

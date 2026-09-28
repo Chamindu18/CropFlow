@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 
+export const LandingPage = lazy(() => import('../routes/public/LandingPage'));
 export const LoginPage = lazy(() => import('../routes/public/LoginPage'));
 export const RegisterPage = lazy(() => import('../routes/public/RegisterPage'));
 export const VerifyEmailPage = lazy(() => import('../routes/public/VerifyEmailPage'));
